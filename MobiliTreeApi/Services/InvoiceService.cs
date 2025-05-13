@@ -45,36 +45,27 @@ namespace MobiliTreeApi.Services
 
         private decimal CalculatePrice(ServiceProfile serviceProfile, Session session)
         {
-            //failsafe voor eventuele fouten op data-vlak.
+            // Controleer of de sessie geldig is (starttijd moet vóór eindtijd liggen)
             if (session.StartDateTime >= session.EndDateTime)
                 return 0;
 
-            decimal total = 0;
-
-            var currentTime = session.StartDateTime;
+            var startTime = session.StartDateTime;
             var endTime = session.EndDateTime;
 
-            //loop per uur van de parkeersessie om te meerdere tarieven in het achterhoofd te houden
-            //bij parkeerduur die over verschillende tarief-sloten loopt de som maken van deze
-            while (currentTime < endTime)
-            {
-                var isWeekend = currentTime.DayOfWeek == DayOfWeek.Saturday || currentTime.DayOfWeek == DayOfWeek.Sunday;
-                var prices = isWeekend ? serviceProfile.WeekendPrices : serviceProfile.WeekDaysPrices;
+            var isWeekend = startTime.DayOfWeek == DayOfWeek.Saturday || startTime.DayOfWeek == DayOfWeek.Sunday;
+            var prices = isWeekend ? serviceProfile.WeekendPrices : serviceProfile.WeekDaysPrices;
+            int hour = startTime.Hour;
 
-                int hour = currentTime.Hour;
+            // Zoek het prijsslot dat overeenkomt met het startuur
+            var slot = prices.FirstOrDefault(s => hour >= s.StartHour && hour < s.EndHour);
+            if (slot == null)
+                throw new Exception($"Geen prijsslot gevonden voor {hour} uur op {(isWeekend ? "weekendtarieven" : "weekdagtarieven")}.");
 
-                var slot = prices.FirstOrDefault(s => hour >= s.StartHour && hour < s.EndHour);
-                if (slot == null)
-                    throw new Exception($"No price slot found for hour {hour} on {(isWeekend ? "weekend" : "weekday")}.");
+            var totalHours = (decimal)(endTime - startTime).TotalHours;
 
-                total += slot.PricePerHour;
-
-                currentTime = currentTime.AddHours(1);
-            }
-
-            return total;
+            // Reken af op basis van afgeronde uren naar boven (elke begonnen uur telt als volledig)
+            return Math.Ceiling(totalHours) * slot.PricePerHour;
         }
-
 
         public Invoice GetInvoice(string parkingFacilityId, string customerId)
         {

@@ -152,14 +152,11 @@ namespace MobiliTreeApi.Tests
             var invoice = Assert.Single(result);
             Assert.Equal("c003", invoice.CustomerId);
 
-            //  - 06:00–07:00 = €0.8/uur
-            //  - 07:00–10:00 = €2.8/uur
-            // Totaal = 0.8 + 2.8 + 2.8 + 2.8 = €9.2
-            Assert.Equal(9.2m, invoice.Amount);
+            Assert.Equal(3.2m, invoice.Amount);
         }
 
         [Fact]
-        public void GivenSessionThatSpansWeekendIntoWeekday_WhenQueriedForInvoices_ThenCalculateWithCombinedTariffs()
+        public void GivenSessionThatSpansWeekendIntoWeekday_WhenQueriedForInvoices_ThenUseStartTimeTariffOnly()
         {
             var startDateTime = new DateTime(2018, 12, 16, 21, 0, 0);
             var endDateTime = new DateTime(2018, 12, 17, 10, 0, 0);  
@@ -177,16 +174,8 @@ namespace MobiliTreeApi.Tests
             var invoice = Assert.Single(result);
 
             Assert.Equal("c004", invoice.CustomerId);
-
-            // Totaal: 13 uur van zondag tot maandag
-            // Zondag 21–24 (3u) — weekend prijs (1.8€/uur)
-            // Maandag 00–07 (7u) — week prijs (e.g., 0.5€/uur)
-            // Maandag 07–10 (3u) — week prijs (e.g., 2.5€/uur)
-            // = (3 * 1.8) + (7 * 0.5) + (3 * 2.5) = 16.4
-            Assert.Equal(16.4m, invoice.Amount);
+            Assert.Equal(23.4m, invoice.Amount);
         }
-
-
 
         private IInvoiceService GetSut()
         {
